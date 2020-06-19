@@ -31,3 +31,6 @@
 [submodule "lib/CMSIS_4"]
 	path = lib/CMSIS_4
 	url = https://github.com/ARM-software/CMSIS.git
+[submodule "hw/mcu/xilinx"]
+	path = hw/mcu/xilinx
+	url = https://github.com/Xilinx/embeddedsw
