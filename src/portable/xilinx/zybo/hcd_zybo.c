@@ -24,24 +24,33 @@
  * This file is part of the TinyUSB stack.
  */
 
+#include <inttypes.h>
+
 #include "tusb_option.h"
+#include "xparameters.h"
+#include "xscugic.h"
+#include "xusbps_hw.h"
 
-#if TUSB_OPT_HOST_ENABLED && (CFG_TUSB_MCU == OPT_MCU_LPC18XX || CFG_TUSB_MCU == OPT_MCU_LPC43XX)
+#if TUSB_OPT_HOST_ENABLED && (CFG_TUSB_MCU == OPT_MCU_ZYBO)
 
-#include "chip.h"
+extern XScuGic IntcInstance;
 
 // LPC18xx and 43xx use EHCI driver
 
 void hcd_int_enable(uint8_t rhport)
 {
+    XScuGic_Enable(&IntcInstance, XPAR_XUSBPS_0_INTR);
 }
 
 void hcd_int_disable(uint8_t rhport)
 {
+	XScuGic_Disable(&IntcInstance, XPAR_XUSBPS_0_INTR);
 }
 
 uint32_t hcd_ehci_register_addr(uint8_t rhport)
 {
+    // TODO: cleanup
+    return (rhport ? XPS_USB1_BASEADDR : XPS_USB0_BASEADDR) + XUSBPS_CMD_OFFSET;
 }
 
 #endif

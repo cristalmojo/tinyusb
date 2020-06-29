@@ -28,7 +28,9 @@
 #include "../board.h"
 
 #include "xparameters.h"
+#include "xparameters_ps.h"
 #include "xgpiops.h"
+#include "xuartps.h"
 #include "xstatus.h"
 #include "xplatform_info.h"
 #include "xscutimer.h"
@@ -59,11 +61,47 @@
 #define LED_PIN 7
 #define BUTTON_PIN 51
 
+#define INPUT_DIRECTION 0
+#define OUTPUT_DIRECTION 1
+
 #define SYSTEM_FREQUENCY 650000000
 
 XGpioPs Gpio; // GPIO driver instance
 XUartPs Uart; // UART Driver instance
 XUsbPs UsbInstance;	/* The instance of the USB Controller */
+XScuGic IntcInstance;
+
+
+void count_millis(void);
+uint32_t board_millis(void);
+void USB_IRQHandler(void * something, long unsigned int someelse);
+void enable_caches(void);
+void disable_caches(void);
+
+void enable_caches() {
+#ifdef __PPC__
+    Xil_ICacheEnableRegion(CACHEABLE_REGION_MASK);
+    Xil_DCacheEnableRegion(CACHEABLE_REGION_MASK);
+#elif __MICROBLAZE__
+#ifdef XPAR_MICROBLAZE_USE_ICACHE
+    Xil_ICacheEnable();
+#endif
+#ifdef XPAR_MICROBLAZE_USE_DCACHE
+    Xil_DCacheEnable();
+#endif
+#endif
+}
+
+void disable_caches() {
+#ifdef __MICROBLAZE__
+#ifdef XPAR_MICROBLAZE_USE_DCACHE
+    Xil_DCacheDisable();
+#endif
+#ifdef XPAR_MICROBLAZE_USE_ICACHE
+    Xil_ICacheDisable();
+#endif
+#endif
+}
 
 /*****************************************************************************/
 /**
@@ -110,7 +148,7 @@ void TimerSetupIntrSystem(XScuGic *IntcInstancePtr,
 	 * interrupt for the device occurs, the handler defined above performs
 	 * the specific interrupt processing for the device.
 	 */
-  Status = XScuGic_Connect(IntcInstancePtr, TimerIntrId,
+  XScuGic_Connect(IntcInstancePtr, TimerIntrId,
                            (Xil_ExceptionHandler)count_millis, (void *)TimerInstancePtr);
 
   // Enable the interrupt for the device.
@@ -129,34 +167,44 @@ void board_init(void)
   XUartPs_Config *UartConfigPtr;
   XScuTimer_Config *TimerConfigPtr;
   XUsbPs_Config *UsbConfigPtr;
-
   XScuTimer TimerInstance; /* Cortex A9 Scu Private Timer Instance */
-  XScuGic IntcInstance;    /* Interrupt Controller Instance */
+
+  enable_caches();
+  Xil_ICacheEnable();
+  Xil_DCacheEnable();
 
   // Initialize the GPIO driver
   GpioConfigPtr = XGpioPs_LookupConfig(GPIO_DEVICE_ID);
   XGpioPs_CfgInitialize(&Gpio, GpioConfigPtr, GpioConfigPtr->BaseAddr);
+  XGpioPs_SetDirectionPin(&Gpio, LED_PIN, OUTPUT_DIRECTION);
+  XGpioPs_SetDirectionPin(&Gpio, BUTTON_PIN, INPUT_DIRECTION);
 
   // Initialize UART driver
   UartConfigPtr = XUartPs_LookupConfig(UART_DEVICE_ID);
   XUartPs_CfgInitialize(&Uart, UartConfigPtr, UartConfigPtr->BaseAddress);
   XUartPs_SetBaudRate(&Uart, CFG_BOARD_UART_BAUDRATE);
+  //XUartNs550_SetBaud(STDOUT_BASEADDR, XPAR_XUARTNS550_CLOCK_HZ, UART_BAUD);
+  //XUartNs550_SetLineControlReg(STDOUT_BASEADDR, XUN_LCR_8_DATA_BITS);
+
 
   // Initialize USB driver
   UsbConfigPtr = XUsbPs_LookupConfig(XPAR_XUSBPS_0_DEVICE_ID);
   XUsbPs_CfgInitialize(&UsbInstance, UsbConfigPtr, UsbConfigPtr->BaseAddress);
+  XUsbPs_IntrSetHandler(&UsbInstance, USB_IRQHandler, NULL, XUSBPS_IXR_UI_MASK);
+
+
 
   // Initialize Timer
 #if CFG_TUSB_OS == OPT_OS_NONE
   // 1ms tick timer
-  ScuTimerIntrExample(&IntcInstance, &TimerInstance, TIMER_DEVICE_ID, TIMER_IRPT_INTR);
+  //ScuTimerIntrExample(&IntcInstance, &TimerInstance, TIMER_DEVICE_ID, TIMER_IRPT_INTR);
 
   TimerConfigPtr = XScuTimer_LookupConfig(TIMER_DEVICE_ID);
   XScuTimer_CfgInitialize(&TimerInstance, TimerConfigPtr, TimerConfigPtr->BaseAddr);
   XScuTimer_SelfTest(&TimerInstance);
   TimerSetupIntrSystem(&IntcInstance, &TimerInstance, TIMER_IRPT_INTR);
   XScuTimer_EnableAutoReload(&TimerInstance);
-  XScuTimer_LoadTimer(&TimerInstance, (int)SYSTEM_FREQUENCY / 1000);
+  XScuTimer_LoadTimer(&TimerInstance, (int)SYSTEM_FREQUENCY / 2000);
   XScuTimer_Start(&TimerInstance);
 #endif
 }
@@ -182,15 +230,23 @@ int board_uart_read(uint8_t *buf, int len)
 
 int board_uart_write(void const *buf, int len)
 {
-  XUartPs_Send(&Uart, buf, len);
+  int sent_bytes = 0;
+  u8 *buf_pos = (u8 *) buf;
+  while (sent_bytes < len) {
+    sent_bytes += XUartPs_Send(&Uart, buf_pos, len-sent_bytes);
+    buf_pos = (u8 *) buf + sent_bytes;
+  } 
+
+  return sent_bytes;
 }
 
 //--------------------------------------------------------------------+
 // Forward USB interrupt events to TinyUSB IRQ Handler
 //--------------------------------------------------------------------+
-void OTG_FS_IRQHandler(void)
+void USB_IRQHandler(void * something, long unsigned int someelse)
 {
-  tud_int_handler(0);
+  printf("USB Interrupt");
+  //tud_int_handler(0);
 }
 
 #if CFG_TUSB_OS == OPT_OS_NONE

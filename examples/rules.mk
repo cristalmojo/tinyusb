@@ -22,27 +22,30 @@ else
 # GNU Make build system
 
 # libc
-LIBS += -lgcc -lm -lnosys
+
+LIBS += -lgcc -lm 
+
+ifneq ($(BOARD), zybo)
+LIBS += -lnosys
+endif
 
 ifneq ($(BOARD), spresense)
 LIBS += -lc
 endif
 
+
+
 # TinyUSB Stack source
 SRC_C += \
 	src/tusb.c \
 	src/common/tusb_fifo.c \
-	src/device/usbd.c \
-	src/device/usbd_control.c \
-	src/class/cdc/cdc_device.c \
-	src/class/dfu/dfu_rt_device.c \
-	src/class/hid/hid_device.c \
-	src/class/midi/midi_device.c \
-	src/class/msc/msc_device.c \
-	src/class/net/net_device.c \
-	src/class/usbtmc/usbtmc_device.c \
-	src/class/vendor/vendor_device.c \
-	src/portable/$(VENDOR)/$(CHIP_FAMILY)/dcd_$(CHIP_FAMILY).c
+	src/host/usbh.c \
+	src/host/hub.c \
+	src/host/ehci/ehci.c \
+	src/class/hid/hid_host.c \
+	src/class/cdc/cdc_host.c \
+	src/portable/$(VENDOR)/$(CHIP_FAMILY)/hcd_$(CHIP_FAMILY).c
+	#src/portable/$(VENDOR)/$(CHIP_FAMILY)/dcd_$(CHIP_FAMILY).c
 
 # TinyUSB stack include
 INC += $(TOP)/src
@@ -50,10 +53,10 @@ INC += $(TOP)/src
 CFLAGS += $(addprefix -I,$(INC))
 
 # TODO Skip nanolib for MSP430
-ifeq ($(BOARD), msp_exp430f5529lp)
+ifneq (, $(BOARD), msp_exp430f5529lp zybo)
   LDFLAGS += $(CFLAGS) -fshort-enums -Wl,-T,$(TOP)/$(LD_FILE) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections
 else
-  LDFLAGS += $(CFLAGS) -fshort-enums -Wl,-T,$(TOP)/$(LD_FILE) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections -specs=nosys.specs -specs=nano.specs
+  LDFLAGS += $(CFLAGS) -fshort-enums -Wl,-T,$(TOP)/$(LD_FILE) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections -specs=nano.specs -specs=nosys.specs
 endif
 ASFLAGS += $(CFLAGS)
 
@@ -85,7 +88,7 @@ $(OBJ_DIRS):
 
 $(BUILD)/$(BOARD)-firmware.elf: $(OBJ)
 	@echo LINK $@
-	@$(CC) -o $@ $(LDFLAGS) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
+	$(CC) -o $@ $(LDFLAGS) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
 
 $(BUILD)/$(BOARD)-firmware.bin: $(BUILD)/$(BOARD)-firmware.elf
 	@echo CREATE $@

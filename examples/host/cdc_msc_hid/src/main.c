@@ -42,24 +42,28 @@ extern void hid_task(void);
 /*------------- MAIN -------------*/
 int main(void)
 {
+  //char buffer[100];
+
   board_init();
-  print_greeting();
-
   tusb_init();
-
+  print_greeting();
+    
   while (1)
   {
     // tinyusb host task
-    tuh_task();
+    //tuh_task();
 
+    //unsigned int millis = board_millis();
+    //int len = sprintf(buffer, "%u", millis);
+    //board_uart_write(buffer, len + 1);
     led_blinking_task();
 
 #if CFG_TUH_CDC
-    cdc_task();
+    //cdc_task();
 #endif
 
 #if CFG_TUD_HID
-    hid_task();
+    //hid_task();
 #endif
   }
 
@@ -173,7 +177,7 @@ void led_blinking_task(void)
   start_ms += interval_ms;
 
   board_led_write(led_state);
-  led_state = 1 - led_state; // toggle
+  led_state = !led_state; // toggle
 }
 
 //--------------------------------------------------------------------+
