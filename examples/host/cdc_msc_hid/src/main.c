@@ -39,23 +39,16 @@ void led_blinking_task(void);
 extern void cdc_task(void);
 extern void hid_task(void);
 
-/*------------- MAIN -------------*/
 int main(void)
 {
-  //char buffer[100];
-
   board_init();
   tusb_init();
   print_greeting();
     
   while (1)
   {
-    // tinyusb host task
     tuh_task();
 
-    //unsigned int millis = board_millis();
-    //int len = sprintf(buffer, "%u", millis);
-    //board_uart_write(buffer, len + 1);
     led_blinking_task();
 
 #if CFG_TUH_CDC

@@ -145,8 +145,8 @@ void board_init(void)
   XUsbPs_Config *UsbConfigPtr;
   XScuTimer TimerInstance; /* Cortex A9 Scu Private Timer Instance */
 
-  Xil_ICacheEnable();
-  Xil_DCacheEnable();
+  Xil_ICacheDisable();
+  Xil_DCacheDisable();
 
   // Initialize the GPIO driver
   GpioConfigPtr = XGpioPs_LookupConfig(GPIO_DEVICE_ID);
