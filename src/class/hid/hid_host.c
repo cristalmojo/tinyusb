@@ -26,20 +26,30 @@
 
 #include "tusb_option.h"
 
+// TODO: exchange
 #if (TUSB_OPT_HOST_ENABLED && HOST_CLASS_HID)
+//#if 1
 
 #include "common/tusb_common.h"
 #include "hid_host.h"
 
 //--------------------------------------------------------------------+
-// MACRO CONSTANT TYPEDEF
-//--------------------------------------------------------------------+
-
-//--------------------------------------------------------------------+
 // HID Interface common functions
 //--------------------------------------------------------------------+
-static inline bool hidh_interface_open(uint8_t dev_addr, uint8_t interface_number, tusb_desc_endpoint_t const *p_endpoint_desc, hidh_interface_info_t *p_hid)
+
+static inline bool hidh_interface_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *itf_desc, uint16_t *p_length)
 {
+  TU_VERIFY (HID_PROTOCOL_KEYBOARD == itf_desc->bInterfaceProtocol ||
+             HID_PROTOCOL_MOUSE == itf_desc->bInterfaceProtocol);
+
+  uint8_t const * p_desc;
+  hidh_interface_info_t* p_hidh = &hidh_data[];
+
+  //------------- Open Data Pipe -------------//
+  tusb_desc_endpoint_t const * ep_desc = (tusb_desc_endpoint_t const *) tu_desc_next(itf_desc);
+
+  --------- Open Data Pipe -------------//
+
   p_hid->pipe_hdl         = hcd_edpt_open(dev_addr, p_endpoint_desc, TUSB_CLASS_HID);
   p_hid->report_size      = p_endpoint_desc->wMaxPacketSize.size; // TODO get size from report descriptor
   p_hid->interface_number = interface_number;
@@ -90,7 +100,7 @@ static hidh_interface_info_t keyboardh_data[CFG_TUSB_HOST_DEVICE_MAX]; // does n
 //------------- KEYBOARD PUBLIC API (parameter validation required) -------------//
 bool  tuh_hid_keyboard_is_mounted(uint8_t dev_addr)
 {
-  return tuh_device_is_configured(dev_addr) && pipehandle_is_valid(keyboardh_data[dev_addr-1].pipe_hdl);
+  return tuh_device_is_configured(dev_addr) && keyboardh_data[dev_addr-1].is_initialized);
 }
 
 tusb_error_t tuh_hid_keyboard_get_report(uint8_t dev_addr, void* p_report)
@@ -101,7 +111,7 @@ tusb_error_t tuh_hid_keyboard_get_report(uint8_t dev_addr, void* p_report)
 bool tuh_hid_keyboard_is_busy(uint8_t dev_addr)
 {
   return  tuh_hid_keyboard_is_mounted(dev_addr) &&
-          hcd_edpt_busy( keyboardh_data[dev_addr-1].pipe_hdl );
+          hcd_edpt_busy( keyboardh_data[dev_addr-1].ep_in);
 }
 
 #endif
@@ -116,13 +126,13 @@ static hidh_interface_info_t mouseh_data[CFG_TUSB_HOST_DEVICE_MAX]; // does not 
 //------------- Public API -------------//
 bool tuh_hid_mouse_is_mounted(uint8_t dev_addr)
 {
-  return tuh_device_is_configured(dev_addr) && pipehandle_is_valid(mouseh_data[dev_addr-1].pipe_hdl);
+  return tuh_device_is_configured(dev_addr) && mouseh_data[dev_addr-1].is_initialized);
 }
 
 bool tuh_hid_mouse_is_busy(uint8_t dev_addr)
 {
   return  tuh_hid_mouse_is_mounted(dev_addr) &&
-          hcd_edpt_busy( mouseh_data[dev_addr-1].pipe_hdl );
+          hcd_edpt_busy( mouseh_data[dev_addr-1].ep_in );
 }
 
 tusb_error_t tuh_hid_mouse_get_report(uint8_t dev_addr, void * report)
@@ -231,27 +241,28 @@ bool hidh_open_subtask(uint8_t dev_addr, tusb_desc_interface_t const *p_interfac
     return false;
   }
 
+  p_hid.is_initialized = true;
   *p_length = sizeof(tusb_desc_interface_t) + sizeof(tusb_hid_descriptor_hid_t) + sizeof(tusb_desc_endpoint_t);
 
   return true;
 }
 
-void hidh_isr(pipe_handle_t pipe_hdl, xfer_result_t event, uint32_t xferred_bytes)
+void hidh_isr(uint8_t dev_addr, xfer_result_t event, uint32_t xferred_bytes)
 {
   (void) xferred_bytes; // TODO may need to use this para later
 
 #if CFG_TUH_HID_KEYBOARD
-  if ( pipehandle_is_equal(pipe_hdl, keyboardh_data[pipe_hdl.dev_addr-1].pipe_hdl) )
+  if ( pipehandle_is_equal(pipe_hdl, keyboardh_data[dev_addr-1].pipe_hdl) )
   {
-    tuh_hid_keyboard_isr(pipe_hdl.dev_addr, event);
+    tuh_hid_keyboard_isr(dev_addr, event);
     return;
   }
 #endif
 
 #if CFG_TUH_HID_MOUSE
-  if ( pipehandle_is_equal(pipe_hdl, mouseh_data[pipe_hdl.dev_addr-1].pipe_hdl) )
+  if ( pipehandle_is_equal(pipe_hdl, mouseh_data[dev_addr-1].pipe_hdl) )
   {
-    tuh_hid_mouse_isr(pipe_hdl.dev_addr, event);
+    tuh_hid_mouse_isr(dev_addr, event);
     return;
   }
 #endif

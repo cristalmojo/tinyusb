@@ -10,60 +10,22 @@ INC += \
 EXAMPLE_SOURCE += $(wildcard src/*.c)
 SRC_C += $(addprefix $(CURRENT_PATH)/, $(EXAMPLE_SOURCE))
 
+CFLAGS += -O0 -g3
+TARGET = /home/christi/Documents/Studium/hwsys/paranut/systems/doom_demo_2/doom_demo/software/tinyusb/examples/host/cdc_msc_hid/_build/build-zybo/zybo-firmware.elf
 include ../../rules.mk
 
-#PARANUT_HOME=/home/christi/Documents/Studium/hwsys/paranut/
-#
-#CC := arm-none-eabi-gcc
-#CC_FLAGS := -MMD -MP -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -ggdb -Og
-#LN_FLAGS :=  -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -Wl,-build-id=none -specs=../../../../../hardware/firmware/Xilinx.spec  -lrsa -Wl,--start-group,-lxil,-lgcc,-lc,--end-group -Wl,--start-group,-lxilffs,-lxil,-lgcc,-lc,--end-group -Wl,--start-group,-lrsa,-lxil,-lgcc,-lc,--end-group  -Wl,--gc-sections
-#
-#SYSTEMS_DIR = $(PARANUT_HOME)/systems
-#
-#c_SOURCES := $(wildcard src/*.c)
-#c_SOURCES := $(wildcard ../../../../../hardware/firmware/*.c)
-#S_SOURCES := $(wildcard ../../../../../hardware/firmware/*.S)
-#s_SOURCES := $(wildcard ../../../../../hardware/firmware/*.s)
-#INCLUDES := $(wildcard ../../../../../hardware/firmware/*.h)
-#OBJS := $(patsubst %.c, %.o, $(c_SOURCES))
-#OBJS += $(patsubst %.S, %.o, $(S_SOURCES))
-#OBJS += $(patsubst %.s, %.o, $(s_SOURCES))
-#LSCRIPT := -T../../../../../hardware/firmware/lscript.ld
-#
-#CURRENT_DIR = $(shell pwd)
-#DEPFILES := $(patsubst %.o, %.d, $(OBJS))
-#LIBS := ../../../../../hardware/firmware/firmware_bsp/ps7_cortexa9_0/lib/libxil.a
-#EXEC := firmware.elf
-#
-#INCLUDEPATH := -I../../../../../hardware/firmware/firmware_bsp/ps7_cortexa9_0/include -I.
-#LIBPATH := -L../../../../../hardware/firmware/firmware_bsp/ps7_cortexa9_0/lib -L./
-#
-#all: $(EXEC)
-#
-#$(EXEC): $(LIBS) $(OBJS) $(INCLUDES)
-#	$(CC) -o $@ $(OBJS) $(CC_FLAGS) $(CFLAGS) $(LN_FLAGS) $(LIBPATH) $(LSCRIPT)
-#
-#$(LIBS):
-#	$(MAKE) -C firmware_bsp
-#
-#%.o:%.c
-#	$(CC) $(CC_FLAGS) $(CFLAGS) -c $< -o $@ $(INCLUDEPATH)
-#
-#%.o:%.S
-#	$(CC) $(CC_FLAGS) $(CFLAGS) -c $< -o $@ $(INCLUDEPATH)
-#
-#%.o:%.s
-#	$(CC) $(CC_FLAGS) $(CFLAGS) -c $< -o $@ $(INCLUDEPATH)
-#
-#clean:
-#	rm -rf $(OBJS) $(LIBS) $(EXEC) *.o
-#
-#.PHONY: flash
-#flash:
-#	$(PARANUT_HOME)/tools/paranut_flash -c $(SYSTEMS_DIR)/doom_demo_2/doom_demo//hardware/build/system.hdf $(EXEC)
-#	
-#flash-bit:
-#	$(PARANUT_HOME)/tools/paranut_flash -c -b $(SYSTEMS_DIR)/doom_demo_2/doom_demo//hardware/build/system.bit $(SYSTEMS_DIR)/$*/hardware/build/system.hdf $(EXEC)
-#
-#-include $(DEPFILES)
-#
+gdb:
+	arm-none-eabi-gdb \
+	-iex 'target remote localhost:3333' \
+	-iex "monitor halt" \
+	-ex "load" \
+	-ex "continue" "$(TARGET)"
+#--tui \
+
+run: $(TARGET)
+	arm-none-eabi-gdb  -iex "target remote localhost:3333" \
+	    -iex "monitor halt" \
+		-ex "load" \
+		-ex "continue" \
+		-ex "set confirm no" \
+		-ex "quit" "$(TARGET)"

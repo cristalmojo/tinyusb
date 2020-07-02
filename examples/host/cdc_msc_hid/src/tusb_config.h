@@ -48,7 +48,7 @@
 #define CFG_TUSB_OS                 OPT_OS_NONE
 
 // CFG_TUSB_DEBUG is defined by compiler in DEBUG build
-// #define CFG_TUSB_DEBUG           0
+#define CFG_TUSB_DEBUG           2
 
 /* USB DMA on some MCUs can only access a specific SRAM region with restriction on alignment.
  * Tinyusb use follows macros to declare transferring memory so that they can be put
@@ -70,11 +70,11 @@
 //--------------------------------------------------------------------
 
 #define CFG_TUH_HUB                 0
-#define CFG_TUH_CDC                 1
+#define CFG_TUH_CDC                 0
 #define CFG_TUH_HID_KEYBOARD        0
 #define CFG_TUH_HID_MOUSE           0
 #define CFG_TUSB_HOST_HID_GENERIC   0 // (not yet supported)
-#define CFG_TUH_MSC                 0
+#define CFG_TUH_MSC                 1
 
 #define CFG_TUSB_HOST_DEVICE_MAX    (CFG_TUH_HUB ? 5 : 1) // normal hub has 4 ports
 

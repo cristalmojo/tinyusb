@@ -196,14 +196,18 @@ void tuh_hid_generic_isr(uint8_t dev_addr, xfer_result_t event);
 // Internal Class Driver API
 //--------------------------------------------------------------------+
 typedef struct {
-  pipe_handle_t pipe_hdl;
+  //pipe_handle_t pipe_hdl;
+  uint8_t ep_in;
+  uint8_t ep_out;
   uint16_t report_size;
   uint8_t interface_number;
+
+  bool is_initialized;
 }hidh_interface_info_t;
 
 void hidh_init(void);
 bool hidh_open_subtask(uint8_t dev_addr, tusb_desc_interface_t const *p_interface_desc, uint16_t *p_length);
-void hidh_isr(pipe_handle_t pipe_hdl, xfer_result_t event, uint32_t xferred_bytes);
+void hidh_isr(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t event, uint32_t xferred_bytes);
 void hidh_close(uint8_t dev_addr);
 
 #ifdef __cplusplus

@@ -1,7 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2019 William D. Jones (thor0505@comcast.net),
+ * Copyright (c) 2019 Christian H. Meyer (Christian.H.Meyer@t-online.de),
+ *                    Maximilian Klimm (Klimm.Max@gmail.com)
  * Ha Thach (tinyusb.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -54,7 +55,8 @@
 #define UART_DEVICE_ID XPAR_XUARTPS_0_DEVICE_ID
 #define TIMER_DEVICE_ID XPAR_XSCUTIMER_0_DEVICE_ID
 #define INTC_DEVICE_ID XPAR_SCUGIC_SINGLE_DEVICE_ID
-#define TIMER_IRPT_INTR XPAR_SCUTIMER_INTR
+#define TIMER_IRPT_ID XPAR_SCUTIMER_INTR
+#define USB_IRPT_ID XPAR_XUSBPS_0_INTR
 
 #define printf xil_printf /* Smalller foot-print printf */
 
@@ -74,34 +76,8 @@ XScuGic IntcInstance;
 
 void count_millis(void);
 uint32_t board_millis(void);
-void USB_IRQHandler(void * something, long unsigned int someelse);
-void enable_caches(void);
-void disable_caches(void);
-
-void enable_caches() {
-#ifdef __PPC__
-    Xil_ICacheEnableRegion(CACHEABLE_REGION_MASK);
-    Xil_DCacheEnableRegion(CACHEABLE_REGION_MASK);
-#elif __MICROBLAZE__
-#ifdef XPAR_MICROBLAZE_USE_ICACHE
-    Xil_ICacheEnable();
-#endif
-#ifdef XPAR_MICROBLAZE_USE_DCACHE
-    Xil_DCacheEnable();
-#endif
-#endif
-}
-
-void disable_caches() {
-#ifdef __MICROBLAZE__
-#ifdef XPAR_MICROBLAZE_USE_DCACHE
-    Xil_DCacheDisable();
-#endif
-#ifdef XPAR_MICROBLAZE_USE_ICACHE
-    Xil_ICacheDisable();
-#endif
-#endif
-}
+void USB_IRQHandler(void *HandlerRef);
+void dummy (void* something, long unsigned int someelse);
 
 /*****************************************************************************/
 /**
@@ -169,7 +145,6 @@ void board_init(void)
   XUsbPs_Config *UsbConfigPtr;
   XScuTimer TimerInstance; /* Cortex A9 Scu Private Timer Instance */
 
-  enable_caches();
   Xil_ICacheEnable();
   Xil_DCacheEnable();
 
@@ -183,17 +158,17 @@ void board_init(void)
   UartConfigPtr = XUartPs_LookupConfig(UART_DEVICE_ID);
   XUartPs_CfgInitialize(&Uart, UartConfigPtr, UartConfigPtr->BaseAddress);
   XUartPs_SetBaudRate(&Uart, CFG_BOARD_UART_BAUDRATE);
-  //XUartNs550_SetBaud(STDOUT_BASEADDR, XPAR_XUARTNS550_CLOCK_HZ, UART_BAUD);
-  //XUartNs550_SetLineControlReg(STDOUT_BASEADDR, XUN_LCR_8_DATA_BITS);
-
 
   // Initialize USB driver
+	u32 ModeValue = XUSBPS_MODE_CM_HOST_MASK;
+
   UsbConfigPtr = XUsbPs_LookupConfig(XPAR_XUSBPS_0_DEVICE_ID);
   XUsbPs_CfgInitialize(&UsbInstance, UsbConfigPtr, UsbConfigPtr->BaseAddress);
-  XUsbPs_IntrSetHandler(&UsbInstance, USB_IRQHandler, NULL, XUSBPS_IXR_UI_MASK);
+  XUsbPs_Reset(&UsbInstance);
+  XUsbPs_IntrSetHandler(&UsbInstance, dummy, dummy, XUSBPS_IXR_ALL);
+	XUsbPs_WriteReg(UsbConfigPtr->BaseAddress, XUSBPS_MODE_OFFSET, ModeValue);
 
-
-
+  
   // Initialize Timer
 #if CFG_TUSB_OS == OPT_OS_NONE
   // 1ms tick timer
@@ -202,11 +177,15 @@ void board_init(void)
   TimerConfigPtr = XScuTimer_LookupConfig(TIMER_DEVICE_ID);
   XScuTimer_CfgInitialize(&TimerInstance, TimerConfigPtr, TimerConfigPtr->BaseAddr);
   XScuTimer_SelfTest(&TimerInstance);
-  TimerSetupIntrSystem(&IntcInstance, &TimerInstance, TIMER_IRPT_INTR);
+  TimerSetupIntrSystem(&IntcInstance, &TimerInstance, TIMER_IRPT_ID);
   XScuTimer_EnableAutoReload(&TimerInstance);
   XScuTimer_LoadTimer(&TimerInstance, (int)SYSTEM_FREQUENCY / 2000);
   XScuTimer_Start(&TimerInstance);
 #endif
+
+  //XScuGic_Connect(&IntcInstance, USB_IRPT_ID, XUsbPs_IntrHandler, &UsbInstance);
+  XScuGic_Connect(&IntcInstance, USB_IRPT_ID, USB_IRQHandler, &UsbInstance);
+  XScuGic_Enable(&IntcInstance, USB_IRPT_ID);
 }
 
 //--------------------------------------------------------------------+
@@ -218,16 +197,23 @@ void board_led_write(bool state)
   XGpioPs_WritePin(&Gpio, LED_PIN, state);
 }
 
+// TODO: test
 uint32_t board_button_read(void)
 {
   return XGpioPs_ReadPin(&Gpio, BUTTON_PIN);
 }
 
+// TODO: test
 int board_uart_read(uint8_t *buf, int len)
 {
   return XUartPs_Recv(&Uart, buf, len);
 }
 
+/*
+ * XUartPs_Send does not block on invocation. Instead, it returns immediately
+ * the count of sent bytes. Therefore, we do some busy waiting to make sure
+ * that everything has been sent.
+ */
 int board_uart_write(void const *buf, int len)
 {
   int sent_bytes = 0;
@@ -243,10 +229,15 @@ int board_uart_write(void const *buf, int len)
 //--------------------------------------------------------------------+
 // Forward USB interrupt events to TinyUSB IRQ Handler
 //--------------------------------------------------------------------+
-void USB_IRQHandler(void * something, long unsigned int someelse)
+void USB_IRQHandler(void *HandlerRef)
 {
-  printf("USB Interrupt");
-  //tud_int_handler(0);
+  printf("USB Interrupt\n");
+  tuh_isr(0);
+  //tuh_int_handler(0);
+}
+
+void dummy (void* something, long unsigned int someelse) {
+  return;
 }
 
 #if CFG_TUSB_OS == OPT_OS_NONE

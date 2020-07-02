@@ -51,7 +51,7 @@ int main(void)
   while (1)
   {
     // tinyusb host task
-    //tuh_task();
+    tuh_task();
 
     //unsigned int millis = board_millis();
     //int len = sprintf(buffer, "%u", millis);
@@ -59,11 +59,11 @@ int main(void)
     led_blinking_task();
 
 #if CFG_TUH_CDC
-    //cdc_task();
+    cdc_task();
 #endif
 
-#if CFG_TUD_HID
-    //hid_task();
+#if CFG_TUH_HID
+    hid_task();
 #endif
   }
 

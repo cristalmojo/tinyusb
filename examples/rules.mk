@@ -43,6 +43,7 @@ SRC_C += \
 	src/host/hub.c \
 	src/host/ehci/ehci.c \
 	src/class/hid/hid_host.c \
+	src/class/msc/msc_host.c \
 	src/class/cdc/cdc_host.c \
 	src/portable/$(VENDOR)/$(CHIP_FAMILY)/hcd_$(CHIP_FAMILY).c
 	#src/portable/$(VENDOR)/$(CHIP_FAMILY)/dcd_$(CHIP_FAMILY).c

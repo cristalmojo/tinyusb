@@ -7,19 +7,17 @@ CFLAGS += \
   -L/home/christi/Documents/Studium/hwsys/paranut/systems/doom_demo_2/doom_demo/hardware/firmware/firmware_bsp/ps7_cortexa9_0/lib -L./ \
   -DCFG_TUSB_MCU=OPT_MCU_ZYBO \
   -MMD -MP \
+  -flto \
   -Wl,-build-id=none
-  #-mthumb
-  #-lxil -lrsa -Wl,--start-group,-lxil,-lgcc,-lc,--end-group \
-  #-Wl,--start-group,-lrsa,-lxil,-lgcc,-lc,--end-group \
-  #-nostdlib -nostartfiles \
-  #-flto \
   
   
 LIBS += -lrsa -lxil -lxilffs
 
 # suppress warning caused by vendor mcu driver
-CFLAGS += -Wno-error=cast-align -Wno-error=shadow -Wno-error=undef -Wno-error=error-implicit-function-declaration \
-		  -Wno-error=strict-prototypes -Wno-error=unused-parameter -Wno-error=type-limits -Wno-error=maybe-uninitialized
+CFLAGS += -Wno-error=cast-align -Wno-error=shadow -Wno-error=undef \
+          -Wno-error=error-implicit-function-declaration \
+		      -Wno-error=strict-prototypes -Wno-error=unused-parameter \
+          -Wno-error=type-limits -Wno-error=maybe-uninitialized
 
 XILINX_DRIVER = hw/mcu/xilinx/XilinxProcessorIPLib/drivers/
 XILINX_INCLUDES = /home/christi/Documents/Studium/hwsys/paranut/systems/doom_demo_2/doom_demo/hardware/firmware/firmware_bsp/ps7_cortexa9_0/include/
