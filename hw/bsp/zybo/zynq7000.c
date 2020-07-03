@@ -145,6 +145,9 @@ void board_init(void)
   XUsbPs_Config *UsbConfigPtr;
   XScuTimer TimerInstance; /* Cortex A9 Scu Private Timer Instance */
 
+  // Important: Disable Caches, as Data written to Memory must always be
+  // available to DMA of USB
+  // TODO: add code to TinyUSB to flush caches on memory access
   Xil_ICacheDisable();
   Xil_DCacheDisable();
 
