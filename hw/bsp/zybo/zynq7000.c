@@ -148,7 +148,7 @@ void board_init(void)
   // Important: Disable Caches, as Data written to Memory must always be
   // available to DMA of USB
   // TODO: add code to TinyUSB to flush caches on memory access
-  Xil_ICacheDisable();
+  Xil_ICacheEnable();
   Xil_DCacheDisable();
 
   // Initialize the GPIO driver
@@ -234,9 +234,7 @@ int board_uart_write(void const *buf, int len)
 //--------------------------------------------------------------------+
 void USB_IRQHandler(void *HandlerRef)
 {
-  printf("USB Interrupt\n");
   tuh_isr(0);
-  //tuh_int_handler(0);
 }
 
 void dummy (void* something, long unsigned int someelse) {
